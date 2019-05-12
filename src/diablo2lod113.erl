@@ -104,6 +104,12 @@ edit_bytes_list(L, [H | T]) ->
 %% Single edit bytes list.
 %%   L - bytes list,
 %%   E - single element of modification.
+single_edit_bytes_list(L, reset_stats) ->
+
+    % After this you can go to Acara and reset you stats again.
+    % Taken from https://github.com/sohan/Diablo-2-Hero-Editor-Hacks
+    single_edit_bytes_list(L, {427, 2});
+
 single_edit_bytes_list(L, {Pos, Value}) when is_integer(Pos) ->
 
     % Direct value in position.
@@ -157,7 +163,7 @@ start() ->
             "/home/alex/Data/Shared/Save/old",
             "Mephala"),
     edit("/home/alex/Data/Shared/Save/Mephala.d2s",
-         []),
+         [reset_stats]),
     compare("/home/alex/Data/Shared/Save/Mephala.d2s",
             "/home/alex/Data/Shared/Save/Mephala.d2s.new"),
     halt().
