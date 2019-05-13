@@ -7,9 +7,11 @@
 % Include.
 -include("defines.hrl").
 
+% Print prefix.
+-define(PF, "diablo2lod113 : ").
+
 % Export functions.
--export([rol32/1,
-         compare/3,
+-export([compare/2,
          edit/2,
          start/0]).
 
@@ -18,39 +20,13 @@
 %---------------------------------------------------------------------------------------------------
 
 %% @doc
-%% Compare files of game saves.
-%% Compare following files:
-%%   *.map
-%%   *.ma0
-%%   *.ma1
-%%   *.key
-%%   *.d2s
-%% Arguments:
-%%   Dir1 - first directory,
-%%   Dir2 - second directory,
-%%   Basename - basename of save files.
-compare(Dir1, Dir2, Basename) ->
-    io:format("diablo2lod113 : compare ~s, ~s, basename ~s:~n", [Dir1, Dir2, Basename]),
-    Extensions = ["map", "ma0", "ma1", "key", "d2s"],
-    lists:map
-    (
-        fun(E) ->
-            compare(Dir1 ++ "/" ++ Basename ++ "." ++ E,
-                    Dir2 ++ "/" ++ Basename ++ "." ++ E)
-        end,
-        Extensions
-    ).
-
-%---------------------------------------------------------------------------------------------------
-
-%% @doc
 %% Compare two files.
-%%   Name1 - first name,
-%%   Name2 - second name.
-compare(Name1, Name2) ->
-    io:format("diablo2lod113 : compare ~s and ~s files:~n", [Name1, Name2]),
-    ?OK(Bin1) = file:read_file(Name1),
-    ?OK(Bin2) = file:read_file(Name2),
+%%   Filename1 - first name,
+%%   Filename2 - second name.
+compare(Filename1, Filename2) ->
+    io:format(?PF ++ "compare ~s and ~s files:~n", [Filename1, Filename2]),
+    ?OK(Bin1) = file:read_file(Filename1),
+    ?OK(Bin2) = file:read_file(Filename2),
     compare_binaries(Bin1, Bin2, {0}).
 
 %---------------------------------------------------------------------------------------------------
@@ -61,13 +37,13 @@ compare(Name1, Name2) ->
 %%   Bin2 - second binary,
 %%   Stat - statistics.
 compare_binaries(<<>>, <<>>, {Pos}) ->
-    io:format("diablo2lod113 : compare results : final position = ~w.~n", [Pos]);
+    io:format(?PF ++ "compare results : final position = ~w.~n", [Pos]);
 compare_binaries(<<B1:?BYTE, Rest1/binary>>,
                  <<B2:?BYTE, Rest2/binary>>,
                  {Pos}) ->
     if
         B1 /= B2 ->
-            io:format("diablo2lod113 : diff bytes in pos ~w : ~w vs. ~w~n", [Pos, B1, B2]);
+            io:format(?PF ++ "diff bytes in pos ~w : ~w vs. ~w~n", [Pos, B1, B2]);
         true ->
             ok
     end,
@@ -77,14 +53,14 @@ compare_binaries(<<B1:?BYTE, Rest1/binary>>,
 
 %% @doc
 %% Edit file.
-%%   Name - name of file,
+%%   Filename - name of file,
 %%   Map - map of changes.
-edit(Name, Map) ->
-    io:format("diablo2lod113 : edit file ~s~n", [Name]),
-    ?OK(Bin) = file:read_file(Name),
+edit(Filename, Map) ->
+    io:format(?PF ++ "edit file ~s:~n", [Filename]),
+    ?OK(Bin) = file:read_file(Filename),
     NewBin = list_to_binary(edit_bytes_list(binary_to_list(Bin), Map)),
     ChSumBin = correct_check_sum(NewBin),
-    file:write_file(Name ++ ".new", ChSumBin).
+    file:write_file(Filename ++ ".new", ChSumBin).
 
 %---------------------------------------------------------------------------------------------------
 
@@ -93,44 +69,49 @@ edit(Name, Map) ->
 %%   L - list,
 %%   M - map of changes.
 edit_bytes_list(L, []) ->
+    io:format(?PF ++ "edit file completed."),
     L;
 edit_bytes_list(L, [H | T]) ->
-    NewL = single_edit_bytes_list(L, H),
+    NewL = edit_bytes_list_step(L, H),
     edit_bytes_list(NewL, T).
 
 %---------------------------------------------------------------------------------------------------
 
 %% @doc
-%% Single edit bytes list.
+%% Edit bytes list (one step).
 %%   L - bytes list,
 %%   E - single element of modification.
-single_edit_bytes_list(L, reset_stats) ->
+edit_bytes_list_step(L, reset_stats) ->
 
     % After this you can go to Acara and reset you stats again.
     % Taken from https://github.com/sohan/Diablo-2-Hero-Editor-Hacks
-    single_edit_bytes_list(L, {427, 2});
+    io:format(?PF ++ "reset_stats~n"),
+    edit_bytes_list_step(L, {427, 2});
 
-single_edit_bytes_list(L, {Pos, Value}) when is_integer(Pos) ->
+edit_bytes_list_step(L, {Pos, Value}) when is_integer(Pos) ->
 
     % Direct value in position.
-    io:format("diablo2lod113 : set value ~w in position ~w~n", [Value, Pos]),
+    io:format(?PF ++ "set value ~w in position ~w~n", [Value, Pos]),
     {F, [_ | T]} = lists:split(Pos, L),
     F ++ [Value] ++ T;
 
-single_edit_bytes_list(L, _) ->
+edit_bytes_list_step(L, E) ->
+    io:format(?PF ++ "unknown element of edit : ~w~n", [E]),
     L.
 
 %---------------------------------------------------------------------------------------------------
 
 %% @doc
 %% ROL of 32-bit value.
+%%   X - value.
 rol32(X) ->
-    ((X band 16#7FFFFFFF) bsl 1) + ((X bsr 31) band 1).
+    ((X band 16#7FFFFFFF) bsl 1) bor ((X bsr 31) band 1).
 
 %---------------------------------------------------------------------------------------------------
 
 %% @doc
 %% Correct checksum.
+%%   Bin - binary.
 correct_check_sum(Bin) ->
     L = binary_to_list(Bin),
 
@@ -159,9 +140,6 @@ correct_check_sum(Bin) ->
 %% @doc
 %% Start function.
 start() ->
-    compare("/home/alex/Data/Shared/Save",
-            "/home/alex/Data/Shared/Save/old",
-            "Mephala"),
     edit("/home/alex/Data/Shared/Save/Mephala.d2s",
          [reset_stats]),
     compare("/home/alex/Data/Shared/Save/Mephala.d2s",
