@@ -89,7 +89,7 @@ inspect_binary(<<V:?LONG, Rest/binary>>, 16#4) ->
     io:format(?PF ++ "inspect : version = ~s (~w)~n", [Str, V]),
     inspect_binary(Rest, 16#8);
 inspect_binary(<<S:?LONG, CS:?LONG, Rest/binary>>, 16#8) ->
-    io:format(?PF ++ "inspect : size = ~w, checksum = ~.16x~n", [S, CS, "0x"]),
+    io:format(?PF ++ "inspect : size = ~w, checksum = ~.16X~n", [S, CS, "0x"]),
     inspect_binary(Rest, 16#10);
 inspect_binary(<<_:4/binary, Rest/binary>>, 16#10) ->
     % TODO
@@ -153,6 +153,9 @@ inspect_binary(<<HK:64/binary, Rest/binary>>, 16#38) ->
         ),
     io:format(?PF ++ "inspect : hotkeys = ~w~n", [QuickInfo]),
     inspect_binary(Rest, 16#78);
+inspect_binary(<<B:?BYTE, Rest/binary>>, Pos) when ((Pos >= 16#78) and (Pos =< 16#78)) ->
+    io:format(?PF ++ "inspect offset ~.16X : ~.16X~n", [Pos, "0x", B, "0x"]),
+    inspect_binary(Rest, Pos + 1);
 inspect_binary(<<_:?BYTE, Rest/binary>>, Pos) ->
     inspect_binary(Rest, Pos + 1);
 inspect_binary(<<>>, Pos) ->
