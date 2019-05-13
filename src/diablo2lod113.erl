@@ -68,9 +68,9 @@ inspect(Filename) ->
 %%   Pos - position.
 %% Format description is taken from
 %%   https://github.com/krisives/d2s-format
-inspect_binary(<<16#AA:?BYTE, 16#55:?BYTE, 16#AA:?BYTE, 16#55:?BYTE, Rest/binary>>, 0) ->
-    inspect_binary(Rest, 4);
-inspect_binary(<<V:?LONG, Rest/binary>>, 4) ->
+inspect_binary(<<16#AA55AA55:?LONG, Rest/binary>>, 0) ->
+    inspect_binary(Rest, 16#4);
+inspect_binary(<<V:?LONG, Rest/binary>>, 16#4) ->
     Str =
         case V of
             71 ->
@@ -87,22 +87,22 @@ inspect_binary(<<V:?LONG, Rest/binary>>, 4) ->
                 "unknown version"
         end,
     io:format(?PF ++ "inspect : version = ~s (~w)~n", [Str, V]),
-    inspect_binary(Rest, 8);
-inspect_binary(<<S:?LONG, CS:?LONG, Rest/binary>>, 8) ->
+    inspect_binary(Rest, 16#8);
+inspect_binary(<<S:?LONG, CS:?LONG, Rest/binary>>, 16#8) ->
     io:format(?PF ++ "inspect : size = ~w, checksum = ~.16x~n", [S, CS, "0x"]),
-    inspect_binary(Rest, 16);
-inspect_binary(<<_:4/binary, Rest/binary>>, 16) ->
+    inspect_binary(Rest, 16#10);
+inspect_binary(<<_:4/binary, Rest/binary>>, 16#10) ->
     % TODO
     % Active Weapon.
-    inspect_binary(Rest, 20);
-inspect_binary(<<Name:16/binary, Rest/binary>>, 20) ->
+    inspect_binary(Rest, 16#14);
+inspect_binary(<<Name:16/binary, Rest/binary>>, 16#14) ->
     io:format(?PF ++ "inspect : name = ~s~n", [binary_to_list(Name)]),
-    inspect_binary(Rest, 36);
-inspect_binary(<<_:4/binary, Rest/binary>>, 36) ->
+    inspect_binary(Rest, 16#24);
+inspect_binary(<<_:4/binary, Rest/binary>>, 16#24) ->
     % TODO
     % Character Status, Character Progression, 2 unknown bytes.
-    inspect_binary(Rest, 40);
-inspect_binary(<<C:?BYTE, Rest/binary>>, 40) ->
+    inspect_binary(Rest, 16#28);
+inspect_binary(<<C:?BYTE, Rest/binary>>, 16#28) ->
     Class =
         case C of
             0 ->
@@ -123,14 +123,36 @@ inspect_binary(<<C:?BYTE, Rest/binary>>, 40) ->
                 "unknown class"
         end,
     io:format(?PF ++ "inspect : class = ~s~n", [Class]),
-    inspect_binary(Rest, 41);
-inspect_binary(<<_:2/binary, Rest/binary>>, 41) ->
+    inspect_binary(Rest, 16#29);
+inspect_binary(<<_:2/binary, Rest/binary>>, 16#29) ->
     % TODO
     % 2 unknown bytes.
-    inspect_binary(Rest, 43);
-inspect_binary(<<L:?BYTE, Rest/binary>>, 43) ->
+    inspect_binary(Rest, 16#2B);
+inspect_binary(<<L:?BYTE, Rest/binary>>, 16#2B) ->
     io:format(?PF ++ "inspect : level = ~w~n", [L]),
-    inspect_binary(Rest, 44);
+    inspect_binary(Rest, 16#2C);
+inspect_binary(<<HK:64/binary, Rest/binary>>, 16#38) ->
+    FF =
+        fun
+            F([], R) ->
+                lists:reverse(R);
+            F([H1, H2, H3, H4 | T], R) ->
+                F(T, [[H1, H2, H3, H4] | R])
+        end,
+    G = FF(binary_to_list(HK), []),
+    QuickInfo =
+        lists:map
+        (
+            fun
+                ([16#FF, 16#FF, 0, 0]) ->
+                    0;
+                (_) ->
+                    1
+            end,
+            G
+        ),
+    io:format(?PF ++ "inspect : hotkeys = ~w~n", [QuickInfo]),
+    inspect_binary(Rest, 16#78);
 inspect_binary(<<_:?BYTE, Rest/binary>>, Pos) ->
     inspect_binary(Rest, Pos + 1);
 inspect_binary(<<>>, Pos) ->
