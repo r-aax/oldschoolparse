@@ -12,6 +12,7 @@
 
 % Export functions.
 -export([compare/2,
+         inspect/1,
          edit/2,
          start/0]).
 
@@ -24,7 +25,7 @@
 %%   Filename1 - first name,
 %%   Filename2 - second name.
 compare(Filename1, Filename2) ->
-    io:format(?PF ++ "compare ~s and ~s files:~n", [Filename1, Filename2]),
+    io:format(?PF ++ "COMPARE ~s and ~s files:~n", [Filename1, Filename2]),
     ?OK(Bin1) = file:read_file(Filename1),
     ?OK(Bin2) = file:read_file(Filename2),
     compare_binaries(Bin1, Bin2, {0}).
@@ -37,7 +38,7 @@ compare(Filename1, Filename2) ->
 %%   Bin2 - second binary,
 %%   Stat - statistics.
 compare_binaries(<<>>, <<>>, {Pos}) ->
-    io:format(?PF ++ "compare results : final position = ~w.~n", [Pos]);
+    io:format(?PF ++ "compare completed : final position = ~w.~n~n", [Pos]);
 compare_binaries(<<B1:?BYTE, Rest1/binary>>,
                  <<B2:?BYTE, Rest2/binary>>,
                  {Pos}) ->
@@ -52,11 +53,32 @@ compare_binaries(<<B1:?BYTE, Rest1/binary>>,
 %---------------------------------------------------------------------------------------------------
 
 %% @doc
+%% Inspect file.
+%%   Filename - name of file.
+inspect(Filename) ->
+    io:format(?PF ++ "INSPECT ~s file:~n", [Filename]),
+    ?OK(Bin) = file:read_file(Filename),
+    inspect_binary(Bin, 0).
+
+%---------------------------------------------------------------------------------------------------
+
+%% @doc
+%% Inspect binary.
+%%   Bin - binary,
+%%   Pos - position.
+inspect_binary(<<_:?BYTE, Rest/binary>>, Pos) ->
+    inspect_binary(Rest, Pos + 1);
+inspect_binary(<<>>, Pos) ->
+    io:format(?PF ++ "inspect completed : final position = ~w.~n~n", [Pos]).
+
+%---------------------------------------------------------------------------------------------------
+
+%% @doc
 %% Edit file.
 %%   Filename - name of file,
 %%   Map - map of changes.
 edit(Filename, Map) ->
-    io:format(?PF ++ "edit file ~s:~n", [Filename]),
+    io:format(?PF ++ "EDIT file ~s:~n", [Filename]),
     ?OK(Bin) = file:read_file(Filename),
     NewBin = list_to_binary(edit_bytes_list(binary_to_list(Bin), Map)),
     ChSumBin = correct_check_sum(NewBin),
@@ -69,7 +91,7 @@ edit(Filename, Map) ->
 %%   L - list,
 %%   M - map of changes.
 edit_bytes_list(L, []) ->
-    io:format(?PF ++ "edit file completed."),
+    io:format(?PF ++ "edit file completed.~n~n"),
     L;
 edit_bytes_list(L, [H | T]) ->
     NewL = edit_bytes_list_step(L, H),
@@ -140,10 +162,11 @@ correct_check_sum(Bin) ->
 %% @doc
 %% Start function.
 start() ->
-    edit("/home/alex/Data/Shared/Save/Mephala.d2s",
+    D2S = "/home/alex/Data/Shared/Save/Mephala.d2s",
+    inspect(D2S),
+    edit(D2S,
          [reset_stats]),
-    compare("/home/alex/Data/Shared/Save/Mephala.d2s",
-            "/home/alex/Data/Shared/Save/Mephala.d2s.new"),
+    compare(D2S, D2S ++ ".new"),
     halt().
 
 %---------------------------------------------------------------------------------------------------
