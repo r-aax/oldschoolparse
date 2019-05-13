@@ -66,6 +66,71 @@ inspect(Filename) ->
 %% Inspect binary.
 %%   Bin - binary,
 %%   Pos - position.
+%% Format description is taken from
+%%   https://github.com/krisives/d2s-format
+inspect_binary(<<16#AA:?BYTE, 16#55:?BYTE, 16#AA:?BYTE, 16#55:?BYTE, Rest/binary>>, 0) ->
+    inspect_binary(Rest, 4);
+inspect_binary(<<V:?LONG, Rest/binary>>, 4) ->
+    Str =
+        case V of
+            71 ->
+                "v1.00 through v1.06";
+            87 ->
+                "v1.07 or Expansion Set v1.08";
+            89 ->
+                "standard game v1.08";
+            92 ->
+                "v1.09, both the standard game and the Expansion Set";
+            96 ->
+                "v1.10+";
+            _ ->
+                "unknown version"
+        end,
+    io:format(?PF ++ "inspect : version = ~s (~w)~n", [Str, V]),
+    inspect_binary(Rest, 8);
+inspect_binary(<<S:?LONG, CS:?LONG, Rest/binary>>, 8) ->
+    io:format(?PF ++ "inspect : size = ~w, checksum = ~.16x~n", [S, CS, "0x"]),
+    inspect_binary(Rest, 16);
+inspect_binary(<<_:4/binary, Rest/binary>>, 16) ->
+    % TODO
+    % Active Weapon.
+    inspect_binary(Rest, 20);
+inspect_binary(<<Name:16/binary, Rest/binary>>, 20) ->
+    io:format(?PF ++ "inspect : name = ~s~n", [binary_to_list(Name)]),
+    inspect_binary(Rest, 36);
+inspect_binary(<<_:4/binary, Rest/binary>>, 36) ->
+    % TODO
+    % Character Status, Character Progression, 2 unknown bytes.
+    inspect_binary(Rest, 40);
+inspect_binary(<<C:?BYTE, Rest/binary>>, 40) ->
+    Class =
+        case C of
+            0 ->
+                "Amazon";
+            1 ->
+                "Sorceress";
+            2 ->
+                "Necromancer";
+            3 ->
+                "Paladin";
+            4 ->
+                "Barbarian";
+            5 ->
+                "Druid";
+            6 ->
+                "Assassin";
+            _ ->
+                "unknown class"
+        end,
+    io:format(?PF ++ "inspect : class = ~s~n", [Class]),
+    inspect_binary(Rest, 41);
+inspect_binary(<<_:2/binary, Rest/binary>>, 41) ->
+    % TODO
+    % 2 unknown bytes.
+    inspect_binary(Rest, 43);
+inspect_binary(<<L:?BYTE, Rest/binary>>, 43) ->
+    io:format(?PF ++ "inspect : level = ~w~n", [L]),
+    inspect_binary(Rest, 44);
 inspect_binary(<<_:?BYTE, Rest/binary>>, Pos) ->
     inspect_binary(Rest, Pos + 1);
 inspect_binary(<<>>, Pos) ->
